@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Hora.Core/Hora.Core.csproj" />
+    <Project Path="src/Hora.Storage/Hora.Storage.csproj" />
+    <Project Path="src/Hora.UI/Hora.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Hora.Tests/Hora.Tests.csproj" />
+  </Folder>
+</Solution>
