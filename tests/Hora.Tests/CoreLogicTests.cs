@@ -42,14 +42,6 @@ public sealed class CoreLogicTests
     }
 
     [Fact]
-    public void PrivacyFilter_MasksTitle()
-    {
-        var filter = new PrivacyFilter();
-        Assert.Equal(PrivacyFilter.Masked, filter.SanitizeTitle("keepass", "", "Gizli Kasa"));
-        Assert.Equal("Açık Başlık", filter.SanitizeTitle("notepad", "", "Açık Başlık"));
-    }
-
-    [Fact]
     public void Aggregator_MergesSameKey()
     {
         var agg = new UsageAggregator();

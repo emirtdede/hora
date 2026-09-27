@@ -3,7 +3,6 @@ namespace Hora.Core.Privacy;
 public interface IPrivacyFilter
 {
     bool IsSensitive(string exeName, string domain);
-    string SanitizeTitle(string exeName, string domain, string title);
 }
 
 public sealed class PrivacyFilter : IPrivacyFilter
@@ -19,8 +18,6 @@ public sealed class PrivacyFilter : IPrivacyFilter
         "paypal", "ebanking", "sifre", "password", "cuzdan", "wallet"
     };
 
-    public const string Masked = "[gizli]";
-
     public bool IsSensitive(string exeName, string domain)
     {
         if (SensitiveExe.Contains(exeName))
@@ -30,20 +27,5 @@ public sealed class PrivacyFilter : IPrivacyFilter
 
         var d = domain.ToLowerInvariant();
         return SensitiveDomainParts.Any(p => d.Contains(p, StringComparison.Ordinal));
-    }
-
-    public string SanitizeTitle(string exeName, string domain, string title)
-    {
-        if (IsSensitive(exeName, domain))
-        {
-            return Masked;
-        }
-
-        if (title.Length > 200)
-        {
-            return title[..200];
-        }
-
-        return title;
     }
 }
