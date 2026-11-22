@@ -19,7 +19,6 @@ Description: >-
   no telemetry, and no cloud server. It ships 28 color palettes, 73 complete
   languages, accessibility zoom and text scale, a tray integration, a global
   hotkey, and a serverless backup folder with rotation and corruption recovery.
-Moniker: hora
 Tags:
   - screen-time
   - productivity

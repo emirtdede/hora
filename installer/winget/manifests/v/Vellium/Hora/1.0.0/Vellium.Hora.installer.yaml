@@ -18,6 +18,6 @@ ReleaseDate: 2026-11-22
 Installers:
   - Architecture: x64
     InstallerUrl: https://github.com/emirtdede/hora/releases/download/1.0.0/Hora-Setup-1.0.0.exe
-    InstallerSha256: 024b72be2f3dab884d7e1e6fb0f13f2b53e0a0bf646cbe264d6a87f6b80ca7df
+    InstallerSha256: 854c501c4025d9fd0fceb66c066f4095f4fb85ad0e1b753609d3d5398c1aa4f8
 ManifestType: installer
 ManifestVersion: 1.6.0

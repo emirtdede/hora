@@ -69,6 +69,15 @@ committed catalogs.
 A catalog without an NSIS translation falls back to English strings inside an
 English installer page rather than showing an empty string.
 
+## Winget manifest
+
+`installer/winget/manifests/v/Vellium/Hora/1.0.0/` describes the published
+setup. The `InstallerSha256` value must equal the asset attached to the `1.0.0`
+release, and a setup compiled on another machine differs byte for byte even
+from the same source (the NSIS banner embeds a timestamp). Take the hash from
+`SHA256SUMS.txt` in the finished Release workflow run and write it into
+`Vellium.Hora.installer.yaml`; never copy the hash of a local `dist/` build.
+
 ## Screenshot capture
 
 `scripts/capture-screenshots.ps1` drives the real executable through UI
