@@ -82,9 +82,13 @@ Last local run before tagging, on Windows 11 build 26100, .NET SDK 8.0.4xx.
 |---|---|---|
 | Build | `dotnet build Hora.slnx` | 0 warnings, 0 errors |
 | Tests | `dotnet test Hora.slnx -c Release` | 185 passed, 0 failed, 0 skipped |
-| Locales | `node scripts/check-locales.mjs` | 73 catalogs, 334 keys each |
+| Locales | `node scripts/check-locales.mjs` | 73 catalogs, 350 keys each |
 | Dash scan | repository scan for em and en dashes | 0 findings |
 | Emoji scan | repository scan for emoji ranges | 0 findings |
 | Screenshots | `pwsh -NoProfile -File scripts\capture-screenshots.ps1` | 12 frames, silent pass |
+| Installer | silent `/S` install and uninstall of the released setup | exit 0, no files, registry keys, or shortcuts left behind |
+| Winget | `winget validate installer\winget\manifests\v\Vellium\Hora\1.0.0` | validation succeeded, no warnings |
+| CI | GitHub Actions `CI` on `main` and `development` | success |
+| Release | GitHub Actions `Release` on tag `1.0.0` | success, three assets attached |
 
 No em dash or en dash is used anywhere in this repository.

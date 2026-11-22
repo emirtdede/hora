@@ -464,10 +464,11 @@ exposed as `BackupEngine.JsonOptions`, and both directions use them.
 |---|---|
 | `dotnet build Hora.slnx` | 0 warnings, 0 errors |
 | `dotnet test Hora.slnx -c Release` | 185 passed, 0 failed, 0 skipped |
-| `node scripts/check-locales.mjs` | 73 catalogs, 334 keys each |
+| `node scripts/check-locales.mjs` | 73 catalogs, 350 keys each |
 | Em dash, en dash, and emoji scan | 0 findings |
 | Screenshot pass | 12 frames captured silently from the real executable |
 | UI, storage, and backup rescan | no Critical or High findings remain open |
+| Installer and winget rescan | silent install and uninstall clean, winget validate without warnings |
 
 Open items after the fixes: none at Critical, High, or Medium. No finding was
 accepted without a code change.
