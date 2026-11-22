@@ -1,108 +1,75 @@
-using System.Windows.Automation;
-using Hora.Core.Logging;
+using System.Text.RegularExpressions;
 
 namespace Hora.Core.Browser;
 
 public interface IDomainExtractor
 {
-    string? TryGetDomain(IntPtr hwnd, string exeName);
-    string ExtractDomain(string? urlOrText);
+    string? Extract(string? windowTitle, string? exe);
 }
 
-public sealed class DomainExtractor : IDomainExtractor
+/// <summary>
+/// Extracts a registrable domain from a browser window title.
+/// Titles follow the "Page title - Browser" convention on Windows.
+/// </summary>
+public sealed partial class DomainExtractor : IDomainExtractor
 {
-    private static readonly HashSet<string> BrowserExe = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> BrowserExecutables = new(StringComparer.OrdinalIgnoreCase)
     {
-        "chrome", "msedge", "edge", "firefox", "brave", "opera", "vivaldi"
+        "chrome", "msedge", "firefox", "brave", "opera", "vivaldi", "arc", "librewolf",
+        "waterfox", "chromium", "thorium", "zen", "floorp",
     };
 
-    private readonly IHoraLogger _log;
-
-    public DomainExtractor(IHoraLogger log)
+    private static readonly HashSet<string> MultiPartSuffixes = new(StringComparer.OrdinalIgnoreCase)
     {
-        _log = log ?? throw new ArgumentNullException(nameof(log));
-    }
+        "co.uk", "org.uk", "ac.uk", "gov.uk", "com.tr", "net.tr", "org.tr", "gov.tr", "edu.tr",
+        "com.au", "net.au", "org.au", "co.jp", "or.jp", "ne.jp", "co.kr", "or.kr", "com.br",
+        "com.mx", "com.ar", "co.in", "co.za", "com.cn", "com.tw", "co.nz", "com.sg", "com.ua",
+        "co.il", "com.pl", "com.es", "com.pt", "com.gr", "com.ru", "co.id", "com.my", "com.ph",
+    };
 
-    public string? TryGetDomain(IntPtr hwnd, string exeName)
+    public string? Extract(string? windowTitle, string? exe)
     {
-        if (hwnd == IntPtr.Zero || !BrowserExe.Contains(exeName))
+        if (string.IsNullOrWhiteSpace(windowTitle) || !IsBrowser(exe))
         {
             return null;
         }
 
-        try
+        var match = DomainPattern().Match(windowTitle);
+        if (!match.Success)
         {
-            var task = Task.Run(() => ReadAddressBar(hwnd));
-            if (!task.Wait(TimeSpan.FromMilliseconds(300)))
-            {
-                return null;
-            }
-
-            var url = task.Result;
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                return null;
-            }
-
-            var domain = ExtractDomain(url);
-            return string.IsNullOrEmpty(domain) ? null : domain;
-        }
-        catch (Exception ex)
-        {
-            _log.Warn($"Adres çubuğu okunamadı ({exeName}): {ex.Message}");
             return null;
         }
+
+        return Normalize(match.Groups["host"].Value);
     }
 
-    public string ExtractDomain(string? urlOrText)
+    public static bool IsBrowser(string? exe) =>
+        !string.IsNullOrWhiteSpace(exe) && BrowserExecutables.Contains(exe.Trim());
+
+    private static string Normalize(string host)
     {
-        if (string.IsNullOrWhiteSpace(urlOrText))
+        var value = host.ToLowerInvariant().Trim('.');
+        if (value.StartsWith("www.", StringComparison.Ordinal))
         {
-            return string.Empty;
+            value = value[4..];
         }
 
-        var text = urlOrText.Trim();
-        if (!text.Contains("://"))
+        var parts = value.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length <= 2)
         {
-            text = "https://" + text;
+            return value;
         }
 
-        if (Uri.TryCreate(text, UriKind.Absolute, out var uri) && !string.IsNullOrEmpty(uri.Host))
+        var lastTwo = string.Join('.', parts[^2..]);
+        if (MultiPartSuffixes.Contains(lastTwo) && parts.Length >= 3)
         {
-            var host = uri.Host.ToLowerInvariant();
-            return host.StartsWith("www.", StringComparison.Ordinal) ? host[4..] : host;
+            return string.Join('.', parts[^3..]);
         }
 
-        return string.Empty;
+        return lastTwo;
     }
 
-    private static string? ReadAddressBar(IntPtr hwnd)
-    {
-        try
-        {
-            var root = AutomationElement.FromHandle(hwnd);
-            if (root is null)
-            {
-                return null;
-            }
-
-            var edit = root.FindFirst(TreeScope.Descendants, new PropertyCondition(
-                AutomationElement.ControlTypeProperty, ControlType.Edit));
-            if (edit is null)
-            {
-                return null;
-            }
-
-            if (edit.TryGetCurrentPattern(ValuePattern.Pattern, out var pattern) && pattern is ValuePattern value)
-            {
-                return value.Current.Value;
-            }
-
-            return null;
-        }
-        catch
-        {
-            return null;
-        }
-    }
+    [GeneratedRegex(@"^(?:.*?\s-\s)?(?<host>(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,24})(?::\d{2,5})?(?:\s*[-|].*)?$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex DomainPattern();
 }

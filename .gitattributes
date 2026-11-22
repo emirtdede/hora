@@ -1,0 +1,17 @@
+# Normalize all text to LF. Every tool in this repository (dotnet, node, pwsh,
+# makensis) reads LF, and a single ending keeps generated files stable: a
+# rebuilt installer script must not show up as a diff.
+* text=auto eol=lf
+
+# Binary assets must never be converted or diffed as text.
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.exe binary
+*.zip binary
+*.dll binary
+*.pdb binary
+*.db binary

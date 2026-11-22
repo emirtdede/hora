@@ -1,90 +1,81 @@
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
-using Hora.Core.Logging;
 
 namespace Hora.Core.Tracking;
 
-public interface IForegroundService
+/// <summary>Foreground window information captured once per sample.</summary>
+public sealed record ForegroundSample(string Exe, string Title, bool Valid, int ProcessId = 0)
 {
-    ForegroundWindow GetCurrent();
+    public static ForegroundSample None { get; } = new(string.Empty, string.Empty, false);
 }
 
-public sealed class ForegroundService : IForegroundService
+public interface IForegroundService
 {
-    private readonly IHoraLogger _log;
+    ForegroundSample Sample();
+}
 
-    public ForegroundService(IHoraLogger log)
-    {
-        _log = log ?? throw new ArgumentNullException(nameof(log));
-    }
-
-    public ForegroundWindow GetCurrent()
-    {
-        try
-        {
-            var hwnd = GetForegroundWindow();
-            if (hwnd == IntPtr.Zero)
-            {
-                return new ForegroundWindow("unknown", string.Empty, 0);
-            }
-
-            GetWindowThreadProcessId(hwnd, out var pid);
-            var title = ReadTitle(hwnd);
-            var exe = ReadExeName((int)pid);
-            return new ForegroundWindow(exe, title, (int)pid);
-        }
-        catch (Exception ex)
-        {
-            _log.Error("Foreground okunamadı.", ex);
-            return new ForegroundWindow("unknown", string.Empty, 0);
-        }
-    }
-
-    private static string ReadTitle(IntPtr hwnd)
+/// <summary>Reads the active window title and owning process name using Win32.</summary>
+public sealed partial class ForegroundService : IForegroundService
+{
+    public ForegroundSample Sample()
     {
         try
         {
-            var len = GetWindowTextLength(hwnd);
-            if (len <= 0 || len > 1024)
+            var handle = GetForegroundWindow();
+            if (handle == IntPtr.Zero)
             {
-                return string.Empty;
+                return ForegroundSample.None;
             }
 
-            var sb = new StringBuilder(len + 1);
-            GetWindowText(hwnd, sb, sb.Capacity);
-            return sb.ToString().Trim();
+            var length = GetWindowTextLength(handle);
+            var builder = new StringBuilder(Math.Clamp(length + 2, 8, 1024));
+            _ = GetWindowText(handle, builder, builder.Capacity);
+            _ = GetWindowThreadProcessId(handle, out var processId);
+
+            var exe = ResolveProcessName(processId);
+            return new ForegroundSample(exe, builder.ToString(), !string.IsNullOrEmpty(exe), (int)processId);
         }
-        catch
+        catch (Exception exception) when (exception is InvalidOperationException
+                                              or ArgumentException
+                                              or System.ComponentModel.Win32Exception
+                                              or NotSupportedException)
+        {
+            return ForegroundSample.None;
+        }
+    }
+
+    private static string ResolveProcessName(uint processId)
+    {
+        if (processId == 0)
         {
             return string.Empty;
         }
-    }
 
-    private string ReadExeName(int pid)
-    {
         try
         {
-            using var proc = Process.GetProcessById(pid);
-            var name = proc.ProcessName;
-            return string.IsNullOrWhiteSpace(name) ? "unknown" : name.ToLowerInvariant();
+            using var process = System.Diagnostics.Process.GetProcessById((int)processId);
+            var name = process.ProcessName;
+            return name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? name[..^4] : name;
         }
-        catch (Exception ex)
+        catch (Exception exception) when (exception is ArgumentException
+                                              or InvalidOperationException
+                                              or System.ComponentModel.Win32Exception
+                                              or NotSupportedException)
         {
-            _log.Warn($"PID {pid} exe adı okunamadı: {ex.Message}");
-            return "unknown";
+            // The process exited, or it is elevated and cannot be inspected.
+            return string.Empty;
         }
     }
 
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
 
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+    private static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetWindowTextLength(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 }

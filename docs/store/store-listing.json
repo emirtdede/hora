@@ -1,0 +1,33 @@
+{
+  "productName": "Hora",
+  "publisher": "Vellium",
+  "category": "Productivity",
+  "price": "Free",
+  "shortDescription": "Local-first screen time tracking for Windows. See where your time goes without sending data anywhere.",
+  "description": [
+    "Hora measures how long you spend in each application and on each website, and keeps that history on your own PC. There is no account, no telemetry, and no server.",
+    "Built for Windows 10 and 11 with WPF and .NET 8, Hora samples the foreground window once per second and stores only durations. Idle time, screen lock, sleep, fullscreen media, and meetings are handled as separate states so a paused video never inflates your work time.",
+    "Features: a first-run wizard, tray mode, a global shortcut, a jump list, Windows light and dark following, 28 color palettes plus a custom accent, 73 complete languages, an optional backup folder that follows you across PCs through OneDrive, Google Drive, Dropbox, or iCloud Drive, backup rotation with corruption recovery, and a diagnostics page with redacted logs.",
+    "Privacy by design: window titles are filtered before they reach the database, password managers and banking titles are discarded, and no content is ever captured. The only outbound request is a user-initiated update check that carries no identifier.",
+    "Developed and published by Vellium."
+  ],
+  "keywords": [
+    "screen time",
+    "productivity",
+    "time tracking",
+    "privacy",
+    "local first",
+    "windows"
+  ],
+  "supportUrl": "https://github.com/emirtdede/hora/issues",
+  "websiteUrl": "https://vellium.dev",
+  "privacyPolicyUrl": "https://github.com/emirtdede/hora/blob/main/docs/store/PRIVACY_POLICY.md",
+  "releaseNotes": "1.0.0: first public release. Local usage tracking, 28 themes, 73 languages, serverless backup with recovery, diagnostics, and a Store-aware updater.",
+  "systemRequirements": {
+    "os": "Windows 10 version 1809 or newer",
+    "architecture": "x64",
+    "runtime": "Self-contained .NET 8, no separate runtime required"
+  },
+  "ageRating": "Everyone",
+  "languages": 73
+}

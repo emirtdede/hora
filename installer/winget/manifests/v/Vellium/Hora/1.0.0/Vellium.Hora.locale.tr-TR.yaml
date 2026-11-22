@@ -1,0 +1,34 @@
+﻿# yaml-language-server: $schema=https://aka.ms/winget-manifest.locale.1.6.0.schema.json
+PackageIdentifier: Vellium.Hora
+PackageVersion: 1.0.0
+PackageLocale: tr-TR
+Publisher: Vellium
+PublisherUrl: https://vellium.dev
+PublisherSupportUrl: https://github.com/emirtdede/hora/issues
+PrivacyUrl: https://github.com/emirtdede/hora/blob/main/docs/store/PRIVACY_POLICY.md
+Author: Vellium
+PackageName: Hora
+PackageUrl: https://github.com/emirtdede/hora
+License: Özel mülkiyet
+LicenseUrl: https://github.com/emirtdede/hora/blob/main/LICENSE
+Copyright: Copyright (c) 2026 Vellium
+ShortDescription: Windows için yerel öncelikli ekran süresi takibi.
+Description: >-
+  Hora, her uygulamada ve her sitede ne kadar zaman geçirdiğinizi ölçer.
+  Takip tamamen cihaz üzerinde, yerel bir SQLite veritabanı ile çalışır; hesap,
+  telemetri ve bulut sunucusu yoktur. 28 renk paleti, 73 tam dil, erişilebilirlik
+  yakınlaştırması ve metin ölçeği, sistem tepsisi, genel kısayol ve rotasyonlu,
+  bozulma kurtarmalı sunucusuz yedekleme klasörü sunar.
+Moniker: hora
+Tags:
+  - ekran-suresi
+  - verimlilik
+  - kullanim-takibi
+  - zaman-takibi
+  - gizlilik
+  - cevrimdisi
+  - windows
+  - wpf
+ReleaseNotesUrl: https://github.com/emirtdede/hora/releases/tag/1.0.0
+ManifestType: locale
+ManifestVersion: 1.6.0

@@ -1,0 +1,23 @@
+﻿Hora - Proprietary Commercial License
+
+Copyright (c) 2026 Vellium. All rights reserved.
+
+1. This software is proprietary. No rights are granted to copy, modify,
+   merge, publish, distribute, sublicense, or sell copies of the Software,
+   except under a separate written commercial or pilot agreement with
+   Vellium.
+2. Pilot customers may use the Software solely for evaluation within their
+   own organization, for the duration and device count stated in their pilot
+   agreement. No redistribution to third parties.
+3. The Software is provided "AS IS", without warranty of any kind.
+   In no event shall Vellium be liable for any claim, damages, or other
+   liability arising from the use of the Software.
+4. Third-party components remain governed by their own licenses. See the
+   project files and package manifests. No copyleft code is embedded in
+   this distribution.
+
+Hora measures screen time locally. It does not upload usage data, does not
+require an account, and contains no telemetry.
+
+Publisher: Vellium - https://vellium.dev
+

@@ -2,19 +2,19 @@ namespace Hora.Core.Tracking;
 
 public interface IMeetingService
 {
-    bool IsMeetingActive(string exeName, string domain);
+    bool IsMeetingActive(string? exe, int processId);
 }
 
+/// <summary>
+/// Recognizes meeting applications together with an active audio session.
+/// Windows does not expose the microphone owner, so this is a best-effort signal.
+/// </summary>
 public sealed class MeetingService : IMeetingService
 {
-    private static readonly HashSet<string> MeetingExe = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> MeetingApps = new(StringComparer.OrdinalIgnoreCase)
     {
-        "teams", "ms-teams", "zoom", "zoom meetings", "webex", "webexmta", "skype", "discord", "slack", "meet"
-    };
-
-    private static readonly HashSet<string> MeetingDomain = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "meet.google.com", "teams.microsoft.com", "teams.live.com", "zoom.us", "webex.com", "meet.jit.si"
+        "teams", "ms-teams", "zoom", "zoom.us", "webex", "webexmta", "gotomeeting", "skype",
+        "slack", "discord", "meet", "slackhuddle", "bluejeans", "whereby", "jitsi",
     };
 
     private readonly IAudioActivityService _audio;
@@ -24,14 +24,21 @@ public sealed class MeetingService : IMeetingService
         _audio = audio ?? throw new ArgumentNullException(nameof(audio));
     }
 
-    public bool IsMeetingActive(string exeName, string domain)
+    public bool IsMeetingActive(string? exe, int processId)
     {
-        var known = MeetingExe.Contains(exeName) || MeetingDomain.Contains(domain);
-        if (!known)
+        if (string.IsNullOrWhiteSpace(exe) || processId <= 0)
         {
             return false;
         }
 
-        return _audio.IsRenderActive() || _audio.IsCaptureActive();
+        var normalized = exe.Trim();
+        if (!MeetingApps.Contains(normalized))
+        {
+            return false;
+        }
+
+        // Only the meeting application's own audio session counts. Any other
+        // playback on the machine must not turn idle time into meeting time.
+        return _audio.IsAudioPlayingForProcess(processId);
     }
 }

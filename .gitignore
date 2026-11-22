@@ -1,4 +1,17 @@
 bin/
 obj/
+artifacts/
+.publish/
 publish/
+dist/
+TestResults/
+*.user
+*.suo
 .vs/
+.idea/
+*.db
+*.db-shm
+*.db-wal
+*.log
+node_modules/
+docs/screenshots/*.tmp.png

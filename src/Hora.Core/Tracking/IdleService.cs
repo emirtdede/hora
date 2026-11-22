@@ -4,42 +4,40 @@ namespace Hora.Core.Tracking;
 
 public interface IIdleService
 {
-    TimeSpan GetInactivity();
-    bool IsIdle(TimeSpan threshold);
+    /// <summary>Seconds since the last keyboard or mouse input.</summary>
+    uint IdleSeconds();
 }
 
-public sealed class IdleService : IIdleService
+/// <summary>Wraps GetLastInputInfo for inactivity detection.</summary>
+public sealed partial class IdleService : IIdleService
 {
-    public TimeSpan GetInactivity()
+    public uint IdleSeconds()
     {
-        var info = new LastInputInfo { CbSize = (uint)Marshal.SizeOf<LastInputInfo>() };
-        if (!GetLastInputInfo(ref info))
+        try
         {
-            return TimeSpan.Zero;
-        }
-
-        unchecked
-        {
-            var elapsed = (uint)Environment.TickCount - info.DwTime;
-            if (elapsed > int.MaxValue)
+            var info = new LastInputInfo { Size = (uint)Marshal.SizeOf<LastInputInfo>() };
+            if (!GetLastInputInfo(ref info))
             {
-                elapsed = int.MaxValue;
+                return 0;
             }
 
-            return TimeSpan.FromMilliseconds(elapsed);
+            var elapsed = unchecked((uint)Environment.TickCount - info.Time);
+            return Math.Min(elapsed / 1000u, 86_400u);
+        }
+        catch (Exception exception) when (exception is EntryPointNotFoundException or DllNotFoundException)
+        {
+            return 0;
         }
     }
-
-    public bool IsIdle(TimeSpan threshold) => GetInactivity() >= threshold;
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetLastInputInfo(ref LastInputInfo plii);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct LastInputInfo
     {
-        public uint CbSize;
-        public uint DwTime;
+        public uint Size;
+        public uint Time;
     }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetLastInputInfo(ref LastInputInfo info);
 }

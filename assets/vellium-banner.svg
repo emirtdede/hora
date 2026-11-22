@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 220" role="img" aria-label="Vellium">
+  <defs>
+    <linearGradient id="b" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0E1117"/>
+      <stop offset="1" stop-color="#151A25"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="220" fill="url(#b)"/>
+  <circle cx="110" cy="110" r="46" fill="none" stroke="#7C8CF8" stroke-width="9"/>
+  <path d="M110 84v26l18 11" fill="none" stroke="#E9ECF5" stroke-width="7" stroke-linecap="round"/>
+  <text x="190" y="103" fill="#E9ECF5" font-family="Segoe UI, Arial, sans-serif" font-size="56" font-weight="600">Vellium</text>
+  <text x="190" y="150" fill="#8A90A6" font-family="Segoe UI, Arial, sans-serif" font-size="24" letter-spacing="6">LOCAL FIRST SOFTWARE</text>
+</svg>

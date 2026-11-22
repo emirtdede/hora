@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Hora.Core.Aggregation;
 using Hora.Core.Browser;
 using Hora.Core.Logging;
@@ -8,19 +7,12 @@ using Hora.Storage.Db;
 
 namespace Hora.UI.Tracking;
 
-public sealed class TrackingDecision
-{
-    public string Status { get; set; } = "Canlı";
-    public string Exe { get; set; } = "unknown";
-    public string Domain { get; set; } = string.Empty;
-    public string Date { get; set; } = DateOnly.FromDateTime(DateTime.Now).ToString("yyyy-MM-dd");
-}
-
+/// <summary>
+/// Samples the foreground window once per second, batches seconds in memory,
+/// and flushes them to SQLite on demand. Only durations leave the sampler.
+/// </summary>
 public sealed class TrackingEngine : IDisposable
 {
-    private static readonly TimeSpan IdleThreshold = TimeSpan.FromSeconds(60);
-    private static readonly TimeSpan MeetingCap = TimeSpan.FromHours(4);
-
     private readonly IForegroundService _foreground;
     private readonly IIdleService _idle;
     private readonly IFullscreenService _fullscreen;
@@ -29,12 +21,10 @@ public sealed class TrackingEngine : IDisposable
     private readonly IMeetingService _meeting;
     private readonly IDomainExtractor _domains;
     private readonly IPrivacyFilter _privacy;
-    private readonly UsageAggregator _aggregator;
-    private readonly UsageRepository _repo;
+    private readonly UsageRepository _repository;
     private readonly IHoraLogger _log;
-
-    private DateTime _meetingStart = DateTime.MinValue;
-    private int _peakHits;
+    private readonly Dictionary<(string Date, string Exe, string Domain), long> _pending = new();
+    private readonly object _sync = new();
     private bool _disposed;
 
     public TrackingEngine(
@@ -46,8 +36,7 @@ public sealed class TrackingEngine : IDisposable
         IMeetingService meeting,
         IDomainExtractor domains,
         IPrivacyFilter privacy,
-        UsageAggregator aggregator,
-        UsageRepository repo,
+        UsageRepository repository,
         IHoraLogger log)
     {
         _foreground = foreground;
@@ -58,176 +47,149 @@ public sealed class TrackingEngine : IDisposable
         _meeting = meeting;
         _domains = domains;
         _privacy = privacy;
-        _aggregator = aggregator;
-        _repo = repo;
+        _repository = repository;
         _log = log;
     }
 
-    public TrackingDecision Tick()
+    public bool IsPaused { get; set; }
+
+    public string CurrentExe { get; private set; } = string.Empty;
+
+    public string CurrentDomain { get; private set; } = string.Empty;
+
+    public SampleKind CurrentKind { get; private set; } = SampleKind.Active;
+
+    public long PendingSeconds
     {
-        var now = DateTime.Now;
-        var date = DateOnly.FromDateTime(now).ToString("yyyy-MM-dd");
-        var decision = new TrackingDecision { Date = date };
-
-        try
+        get
         {
-            if (_session.IsLocked)
+            lock (_sync)
             {
-                decision.Status = "Kilitli";
-                decision.Exe = "locked";
-                _aggregator.Add(date, "locked", string.Empty, 1);
-                return decision;
+                return _pending.Values.Sum();
             }
-
-            var fg = _foreground.GetCurrent();
-            var hwnd = GetForegroundHandle();
-            var idleFor = _idle.GetInactivity();
-
-            var domain = _domains.TryGetDomain(hwnd, fg.ExeName) ?? string.Empty;
-            if (string.IsNullOrEmpty(domain) && fg.WindowTitle.Length > 0)
-            {
-                domain = GuessDomainFromTitle(fg.WindowTitle);
-            }
-
-            // Gizlilik: pencere basliklari diske yazilmaz; hassas exe/domain icin
-            // domain de saklanmaz, yalnizca exe adi kaydedilir.
-            if (_privacy.IsSensitive(fg.ExeName, domain))
-            {
-                domain = string.Empty;
-            }
-
-            var isFullscreen = _fullscreen.IsForegroundFullscreen(hwnd);
-            var renderActive = SampleRenderSmoothed();
-            var mediaPlaying = isFullscreen && renderActive;
-            var meetingActive = _meeting.IsMeetingActive(fg.ExeName, domain);
-
-            if (meetingActive)
-            {
-                if (_meetingStart == DateTime.MinValue)
-                {
-                    _meetingStart = now;
-                }
-
-                if (now - _meetingStart > MeetingCap)
-                {
-                    decision.Status = "Boşta";
-                    decision.Exe = "idle";
-                    _aggregator.Add(date, "idle", string.Empty, 1);
-                    return decision;
-                }
-
-                decision.Status = "Toplantı";
-            }
-            else
-            {
-                _meetingStart = DateTime.MinValue;
-                if (mediaPlaying)
-                {
-                    decision.Status = "Film";
-                }
-                else if (idleFor >= IdleThreshold)
-                {
-                    decision.Status = "Boşta";
-                    decision.Exe = "idle";
-                    _aggregator.Add(date, "idle", string.Empty, 1);
-                    return decision;
-                }
-                else
-                {
-                    decision.Status = "Canlı";
-                }
-            }
-
-            decision.Exe = fg.ExeName;
-            decision.Domain = domain;
-            _aggregator.Add(date, fg.ExeName, domain, 1);
-            return decision;
-        }
-        catch (Exception ex)
-        {
-            _log.Error("Tick hatası.", ex);
-            decision.Status = "Canlı";
-            return decision;
         }
     }
 
+    /// <summary>Buffered seconds for real applications only, excluding idle, lock, and sleep.</summary>
+    public long PendingActiveSeconds
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _pending.Where(pair => !IsSystemBucket(pair.Key.Exe)).Sum(pair => pair.Value);
+            }
+        }
+    }
+
+    private static bool IsSystemBucket(string exe) => SystemBuckets.IsSystem(exe);
+
+    private static string Today() =>
+        DateTime.Now.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>Runs one sample. Must be called once per second.</summary>
+    public void Tick()
+    {
+        if (_disposed || IsPaused)
+        {
+            return;
+        }
+
+        var sample = _foreground.Sample();
+        var idleSeconds = _idle.IdleSeconds();
+        var locked = _session.IsLocked();
+        var suspended = _session.IsSuspended();
+        var meeting = _meeting.IsMeetingActive(sample.Exe, sample.ProcessId);
+
+        // A fullscreen app with its own audio keeps counting even when the user is still.
+        if (!meeting && _fullscreen.IsFullscreen() && sample.Valid
+            && _audio.IsAudioPlayingForProcess(sample.ProcessId))
+        {
+            meeting = true;
+        }
+
+        var decision = TrackingDecider.Decide(sample, idleSeconds, locked, suspended, meeting);
+        var domain = string.Empty;
+        if (decision.Kind is SampleKind.Active or SampleKind.Meeting)
+        {
+            // Sensitive titles are dropped before any domain is derived.
+            var safeTitle = _privacy.SanitizeTitle(sample.Title, sample.Exe);
+            if (!string.IsNullOrEmpty(safeTitle))
+            {
+                domain = _domains.Extract(safeTitle, sample.Exe) ?? string.Empty;
+            }
+        }
+
+        CurrentExe = decision.Kind is SampleKind.Idle or SampleKind.Locked or SampleKind.Suspended
+            ? decision.Exe
+            : sample.Exe;
+        CurrentDomain = domain;
+        CurrentKind = decision.Kind;
+
+        // The day is captured per sample, so seconds recorded before midnight and
+        // flushed after it still land on the correct date.
+        var key = (Today(), decision.Kind is SampleKind.Idle or SampleKind.Locked or SampleKind.Suspended
+            ? decision.Exe
+            : sample.Exe, domain);
+        if (string.IsNullOrWhiteSpace(key.Item2))
+        {
+            return;
+        }
+
+        lock (_sync)
+        {
+            _pending[key] = _pending.TryGetValue(key, out var current) ? current + 1 : 1;
+        }
+    }
+
+    /// <summary>Writes buffered seconds. Safe to call concurrently.</summary>
     public async Task FlushAsync(CancellationToken ct = default)
     {
-        var items = _aggregator.Drain();
-        foreach (var (date, exe, domain, seconds) in items)
+        Dictionary<(string Date, string Exe, string Domain), long> snapshot;
+        lock (_sync)
         {
-            try
+            if (_pending.Count == 0)
             {
-                await _repo.AddSecondsAsync(date, exe, domain, seconds, ct).ConfigureAwait(false);
+                return;
             }
-            catch (Exception ex)
-            {
-                _log.Error($"Flush yazılamadı {exe}/{domain}.", ex);
-            }
-        }
-    }
 
-    private bool SampleRenderSmoothed()
-    {
+            snapshot = new Dictionary<(string Date, string Exe, string Domain), long>(_pending);
+            _pending.Clear();
+        }
+
         try
         {
-            var peak = _audio.SampleRenderPeak();
-            if (peak > 0.02f)
-            {
-                _peakHits = Math.Min(_peakHits + 1, 3);
-            }
-            else
-            {
-                _peakHits = Math.Max(_peakHits - 1, 0);
-            }
-
-            if (_audio.IsRenderActive())
-            {
-                return true;
-            }
-
-            return _peakHits >= 1;
+            await _repository.AddBatchAsync(
+                snapshot.Select(pair => new Hora.Storage.Models.UsageRow(
+                        pair.Key.Date, pair.Key.Exe, pair.Key.Domain, pair.Value)),
+                ct).ConfigureAwait(false);
         }
-        catch
+        catch (OperationCanceledException)
         {
-            return false;
+            Restore(snapshot);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _log.Error("Flush failed; seconds are kept for the next attempt.", exception);
+            Restore(snapshot);
         }
     }
 
-    private static string GuessDomainFromTitle(string title)
+    /// <summary>Puts a snapshot back into the buffer after a failed write.</summary>
+    private void Restore(Dictionary<(string Date, string Exe, string Domain), long> snapshot)
     {
-        var t = title.ToLowerInvariant();
-        if (t.Contains("youtube")) return "youtube.com";
-        if (t.Contains("netflix")) return "netflix.com";
-        if (t.Contains("github")) return "github.com";
-        if (t.Contains("gmail")) return "mail.google.com";
-        return string.Empty;
-    }
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
-
-    private static IntPtr GetForegroundHandle()
-    {
-        try
+        lock (_sync)
         {
-            return GetForegroundWindow();
-        }
-        catch
-        {
-            return IntPtr.Zero;
+            foreach (var (key, seconds) in snapshot)
+            {
+                _pending[key] = _pending.TryGetValue(key, out var current) ? current + seconds : seconds;
+            }
         }
     }
 
     public void Dispose()
     {
-        if (_disposed)
-        {
-            return;
-        }
-
         _disposed = true;
-        (_audio as IDisposable)?.Dispose();
-        _session.Dispose();
     }
 }

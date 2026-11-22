@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+PackageIdentifier: Vellium.Hora
+PackageVersion: 1.0.0
+Platform:
+  - Windows.Desktop
+MinimumOSVersion: 10.0.17763.0
+InstallerType: nullsoft
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+InstallerSwitches:
+  Silent: /S
+  SilentWithProgress: /S
+UpgradeBehavior: install
+ReleaseDate: 2026-11-22
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/emirtdede/hora/releases/download/1.0.0/Hora-Setup-1.0.0.exe
+    InstallerSha256: 024b72be2f3dab884d7e1e6fb0f13f2b53e0a0bf646cbe264d6a87f6b80ca7df
+ManifestType: installer
+ManifestVersion: 1.6.0

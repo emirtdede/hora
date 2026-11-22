@@ -1,0 +1,36 @@
+﻿# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+PackageIdentifier: Vellium.Hora
+PackageVersion: 1.0.0
+PackageLocale: en-US
+Publisher: Vellium
+PublisherUrl: https://vellium.dev
+PublisherSupportUrl: https://github.com/emirtdede/hora/issues
+PrivacyUrl: https://github.com/emirtdede/hora/blob/main/docs/store/PRIVACY_POLICY.md
+Author: Vellium
+PackageName: Hora
+PackageUrl: https://github.com/emirtdede/hora
+License: Proprietary
+LicenseUrl: https://github.com/emirtdede/hora/blob/main/LICENSE
+Copyright: Copyright (c) 2026 Vellium
+ShortDescription: Local-first screen time tracking for Windows.
+Description: >-
+  Hora measures how long you spend in each application and on each website.
+  Tracking runs entirely on the device with a local SQLite database, no account,
+  no telemetry, and no cloud server. It ships 28 color palettes, 73 complete
+  languages, accessibility zoom and text scale, a tray integration, a global
+  hotkey, and a serverless backup folder with rotation and corruption recovery.
+Moniker: hora
+Tags:
+  - screen-time
+  - productivity
+  - usage-tracking
+  - time-tracking
+  - privacy
+  - offline
+  - windows
+  - wpf
+ReleaseNotesUrl: https://github.com/emirtdede/hora/releases/tag/1.0.0
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
+
+
